@@ -4,6 +4,7 @@
 create table if not exists public.injuries (
   id          bigint generated always as identity primary key,
   nom         text not null,
+  cause       text,
   statut      text not null default 'active' check (statut in ('active', 'retabli')),
   created_at  timestamptz not null default now(),
   resolved_at timestamptz

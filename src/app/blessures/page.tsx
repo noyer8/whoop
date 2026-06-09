@@ -69,8 +69,9 @@ async function InjuryDetail({ injury }: { injury: Injury }) {
           <h3 className="font-semibold">{injury.nom}</h3>
           <p className="text-xs text-neutral-400">
             Depuis le {new Date(injury.created_at).toLocaleDateString("fr-FR")}
+            {injury.cause && <> — Cause : {injury.cause}</>}
             {injury.statut === "retabli" && injury.resolved_at && (
-              <> - Retabli le {new Date(injury.resolved_at).toLocaleDateString("fr-FR")}</>
+              <> — Retabli le {new Date(injury.resolved_at).toLocaleDateString("fr-FR")}</>
             )}
           </p>
         </div>
@@ -227,6 +228,15 @@ export default async function BlessuresPage() {
               required
               className={inputClass}
               placeholder="ex. genou droit jumper's knee"
+            />
+          </div>
+          <div className="flex-1">
+            <label className={labelClass}>Cause probable</label>
+            <input
+              type="text"
+              name="cause"
+              className={inputClass}
+              placeholder="ex. surcharge course, choc match..."
             />
           </div>
           <SubmitButton>Ajouter</SubmitButton>

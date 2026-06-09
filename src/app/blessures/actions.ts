@@ -5,8 +5,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export async function addInjury(formData: FormData) {
   const nom = String(formData.get("nom") || "").trim();
+  const cause = String(formData.get("cause") || "").trim() || null;
   if (!nom) return;
-  await getSupabaseAdmin().from("injuries").insert({ nom, statut: "active" });
+  await getSupabaseAdmin().from("injuries").insert({ nom, cause, statut: "active" });
   revalidatePath("/blessures");
 }
 

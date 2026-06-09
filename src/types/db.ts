@@ -90,6 +90,7 @@ export type Planning = {
 export type Injury = {
   id: number;
   nom: string;
+  cause: string | null;
   statut: "active" | "retabli";
   created_at: string;
   resolved_at: string | null;

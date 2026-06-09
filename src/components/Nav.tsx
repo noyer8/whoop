@@ -7,7 +7,6 @@ const links = [
   { href: "/", label: "Dashboard" },
   { href: "/sommeil", label: "Sommeil" },
   { href: "/trainings", label: "Entrainements" },
-  { href: "/pains", label: "Douleurs" },
   { href: "/blessures", label: "Blessures" },
   { href: "/tests", label: "Tests" },
   { href: "/planning", label: "Planning" },

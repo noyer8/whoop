@@ -12,7 +12,6 @@ export async function addTraining(formData: FormData) {
 
   if (!date || !type_seance) return;
 
-  // exos saisis en lignes -> tableau de strings
   const exos = exosRaw
     ? exosRaw.split("\n").map((l) => l.trim()).filter(Boolean)
     : null;
@@ -26,6 +25,38 @@ export async function addTraining(formData: FormData) {
     notes,
   });
   revalidatePath("/trainings");
+}
+
+export async function quickAddTraining(input: {
+  type_seance: string;
+  rpe: number;
+  notes: string | null;
+  painZone: string | null;
+  painIntensity: number | null;
+}) {
+  const supabase = getSupabaseAdmin();
+  const date = new Date().toISOString().slice(0, 10);
+
+  await supabase.from("trainings").insert({
+    date,
+    type_seance: input.type_seance,
+    rpe: input.rpe,
+    exos: null,
+    notes: input.notes,
+  });
+
+  if (input.painZone && input.painIntensity != null) {
+    await supabase.from("pains").insert({
+      date,
+      zone: input.painZone,
+      intensite: input.painIntensity,
+      contexte: `Apres seance ${input.type_seance}`,
+    });
+  }
+
+  revalidatePath("/trainings");
+  revalidatePath("/pains");
+  revalidatePath("/");
 }
 
 export async function deleteTraining(formData: FormData) {

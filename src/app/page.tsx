@@ -4,6 +4,7 @@ import {
   getTrainings,
   getPains,
   getTests,
+  getLastSync,
   isSupabaseConfigured,
 } from "@/lib/data";
 import {
@@ -21,16 +22,19 @@ import {
   WeeklyGoalBars,
   CrossScatter,
 } from "@/components/charts";
+import SyncButton from "@/app/settings/SyncButton";
+import ExportButton from "@/components/ExportButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const [recovery, workouts, trainings, pains, tests] = await Promise.all([
+  const [recovery, workouts, trainings, pains, tests, lastSync] = await Promise.all([
     getRecovery(120),
     getWorkouts(120),
     getTrainings(120),
     getPains(180),
     getTests(),
+    getLastSync(),
   ]);
 
   const semaine = isoWeek(new Date());
@@ -57,13 +61,19 @@ export default async function Dashboard() {
     <main className="mx-auto w-full max-w-5xl px-4 py-8">
       <PageHeader
         title="Dashboard"
-        subtitle={`Semaine ${semaine} · récupération & charge`}
+        subtitle={`Semaine ${semaine}`}
+        action={
+          <div className="flex items-center gap-3">
+            <ExportButton />
+            <SyncButton lastSync={lastSync} />
+          </div>
+        }
       />
 
       {!isSupabaseConfigured() && (
         <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          Supabase pas encore configuré — renseigne les variables d’env puis
-          exécute les migrations. Les écrans fonctionnent, ils s’afficheront vides.
+          Supabase pas encore configure. Renseigne les variables d env puis
+          execute les migrations.
         </div>
       )}
 
@@ -72,13 +82,13 @@ export default async function Dashboard() {
         <StatCard
           label="Z4-Z5 cette semaine"
           value={`${summary.z45} min`}
-          hint={`Objectif ${OBJECTIF_Z45_MIN} min · ${z45Pct}%`}
+          hint={`Objectif ${OBJECTIF_Z45_MIN} min - ${z45Pct}%`}
           tone={summary.z45 >= OBJECTIF_Z45_MIN ? "good" : "default"}
         />
-        <StatCard label="Strain cumulé" value={summary.strain || "—"} />
+        <StatCard label="Strain cumule" value={summary.strain || "---"} />
         <StatCard
           label="Recovery moy."
-          value={summary.recoveryMoy != null ? `${summary.recoveryMoy}%` : "—"}
+          value={summary.recoveryMoy != null ? `${summary.recoveryMoy}%` : "---"}
           tone={
             summary.recoveryMoy == null
               ? "default"
@@ -100,8 +110,7 @@ export default async function Dashboard() {
       {!hasWhoop ? (
         <div className="mt-6">
           <EmptyState>
-            Aucune donnée Whoop encore. Connecte Whoop dans{" "}
-            <strong>Réglages</strong> et lance un pull.
+            Aucune donnee Whoop encore. Connecte Whoop dans Reglages et lance une synchro.
           </EmptyState>
         </div>
       ) : (
@@ -135,14 +144,13 @@ export default async function Dashboard() {
       {/* Croisements intelligents */}
       <h2 className="mt-10 mb-3 text-lg font-semibold">Croisements</h2>
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* 1. Douleur ↔ séances précédentes */}
         <Card>
-          <div className="mb-1 text-sm font-medium">Douleurs ↔ séances (J-2)</div>
+          <div className="mb-1 text-sm font-medium">Douleurs - seances (J-2)</div>
           <p className="mb-3 text-xs text-neutral-400">
-            Types de séances dans les 2 jours avant une douleur.
+            Types de seances dans les 2 jours avant une douleur.
           </p>
           {painSessions.length === 0 ? (
-            <p className="text-sm text-neutral-400">Pas assez de données.</p>
+            <p className="text-sm text-neutral-400">Pas assez de donnees.</p>
           ) : (
             <ul className="space-y-1.5">
               {painSessions.map((s) => {
@@ -161,28 +169,26 @@ export default async function Dashboard() {
           )}
         </Card>
 
-        {/* 2. Recovery ↔ qualité foot */}
         <Card>
-          <div className="mb-1 text-sm font-medium">Recovery ↔ RPE foot</div>
+          <div className="mb-1 text-sm font-medium">Recovery - RPE foot</div>
           <p className="mb-3 text-xs text-neutral-400">
-            Recovery du jour (x) vs RPE séance foot (y).
+            Recovery du jour (x) vs RPE seance foot (y).
           </p>
           {recFoot.length === 0 ? (
-            <p className="text-sm text-neutral-400">Pas assez de données.</p>
+            <p className="text-sm text-neutral-400">Pas assez de donnees.</p>
           ) : (
             <CrossScatter data={recFoot} xLabel="Recovery %" yLabel="RPE" color="#10b981" />
           )}
         </Card>
 
-        {/* 3. Z4-Z5 ↔ Bronco */}
         <Card>
-          <div className="mb-1 text-sm font-medium">Volume Z4-Z5 ↔ Bronco</div>
+          <div className="mb-1 text-sm font-medium">Volume Z4-Z5 - Bronco</div>
           <p className="mb-3 text-xs text-neutral-400">
             Z4-Z5 hebdo (x) vs chrono Bronco (y, plus bas = mieux).
           </p>
           {z45Bronco.length === 0 ? (
             <p className="text-sm text-neutral-400">
-              Pas assez de données (ajoute des tests Bronco).
+              Pas assez de donnees (ajoute des tests Bronco).
             </p>
           ) : (
             <CrossScatter
@@ -203,7 +209,7 @@ export default async function Dashboard() {
               tests.filter((t) => t.type === "Bronco" && t.resultat != null).at(-1)!.resultat
             )
           )}{" "}
-          · cible fin août &lt; 4&apos;15.
+          - cible fin aout &lt; 4&apos;15.
         </p>
       )}
     </main>

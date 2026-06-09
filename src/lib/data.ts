@@ -8,6 +8,9 @@ import type {
   Pain,
   Test,
   Planning,
+  Injury,
+  InjuryPain,
+  InjuryTreatment,
 } from "@/types/db";
 
 export function isSupabaseConfigured(): boolean {
@@ -80,3 +83,39 @@ export const getPlanning = (semaine?: string) =>
     const base = q.select("*").order("jour", { ascending: true });
     return semaine ? base.eq("semaine", semaine) : base;
   });
+
+export const getInjuries = (statut?: "active" | "retabli") =>
+  safeSelect<Injury>("injuries", (q) => {
+    const base = q.select("*").order("created_at", { ascending: false });
+    return statut ? base.eq("statut", statut) : base;
+  });
+
+export const getInjuryPains = (injuryId: number) =>
+  safeSelect<InjuryPain>("injury_pains", (q) =>
+    q.select("*").eq("injury_id", injuryId).order("date", { ascending: true })
+  );
+
+export const getInjuryTreatments = (injuryId: number) =>
+  safeSelect<InjuryTreatment>("injury_treatments", (q) =>
+    q.select("*").eq("injury_id", injuryId).order("date_debut", { ascending: true })
+  );
+
+export const getAllInjuryPains = () =>
+  safeSelect<InjuryPain>("injury_pains", (q) =>
+    q.select("*").order("date", { ascending: true })
+  );
+
+export async function getLastSync(): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data } = await supabase
+      .from("whoop_tokens")
+      .select("last_sync")
+      .eq("id", true)
+      .single();
+    return data?.last_sync ?? null;
+  } catch {
+    return null;
+  }
+}

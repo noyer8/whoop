@@ -150,6 +150,11 @@ export async function syncWhoop(sinceDays = 14): Promise<SyncResult> {
     if (error) throw new Error(`Upsert workouts: ${error.message}`);
   }
 
+  await supabase
+    .from("whoop_tokens")
+    .update({ last_sync: new Date().toISOString() })
+    .eq("id", true);
+
   return {
     recovery: recoveryRows.length,
     sleep: sleepRows.length,

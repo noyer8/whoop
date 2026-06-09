@@ -86,3 +86,31 @@ export type Planning = {
   realise: boolean;
   created_at: string;
 };
+
+export type Injury = {
+  id: number;
+  nom: string;
+  statut: "active" | "retabli";
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export type InjuryPain = {
+  id: number;
+  injury_id: number;
+  date: string;
+  intensite: number;
+  note: string | null;
+  training_id: number | null;
+  whoop_workout_id: string | null;
+  created_at: string;
+};
+
+export type InjuryTreatment = {
+  id: number;
+  injury_id: number;
+  date_debut: string;
+  date_fin: string | null;
+  methode: string;
+  created_at: string;
+};

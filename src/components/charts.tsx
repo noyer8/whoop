@@ -8,6 +8,9 @@ import {
   Bar,
   ScatterChart,
   Scatter,
+  AreaChart,
+  Area,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,6 +18,7 @@ import {
   ReferenceLine,
   Cell,
   ZAxis,
+  Legend,
 } from "recharts";
 
 const axis = { fontSize: 11, stroke: "#9ca3af" };
@@ -159,6 +163,105 @@ export function PainTimeline({
         </Scatter>
       </ScatterChart>
     </ResponsiveContainer>
+  );
+}
+
+// ── Stacked area : phases de sommeil ─────────────────────────────────────
+export function SleepStagesChart({
+  data,
+}: {
+  data: { label: string; deep: number; rem: number; light: number }[];
+}) {
+  const fmt = (v: number) => `${Math.round(v)} min`;
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+        <CartesianGrid stroke={grid} vertical={false} />
+        <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} minTickGap={24} />
+        <YAxis tick={axis} tickLine={false} axisLine={false} width={40} tickFormatter={fmt} />
+        <Tooltip
+          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+          formatter={(v, name) => [`${Math.round(Number(v))} min`, name]}
+        />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <Area type="monotone" dataKey="deep" stackId="1" stroke="#6366f1" fill="#6366f1" fillOpacity={0.7} name="Profond" />
+        <Area type="monotone" dataKey="rem" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="REM" />
+        <Area type="monotone" dataKey="light" stackId="1" stroke="#93c5fd" fill="#93c5fd" fillOpacity={0.4} name="Leger" />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Barres duree de sommeil + ligne efficacite ──────────────────────────
+export function SleepDurationChart({
+  data,
+}: {
+  data: { label: string; duration: number; efficiency: number | null }[];
+}) {
+  const fmtH = (v: number) => {
+    const h = Math.floor(v / 60);
+    const m = Math.round(v % 60);
+    return `${h}h${String(m).padStart(2, "0")}`;
+  };
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+        <CartesianGrid stroke={grid} vertical={false} />
+        <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} minTickGap={24} />
+        <YAxis yAxisId="left" tick={axis} tickLine={false} axisLine={false} width={48} tickFormatter={fmtH} />
+        <YAxis yAxisId="right" orientation="right" tick={axis} tickLine={false} axisLine={false} width={40} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+        <Tooltip
+          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+          formatter={(v, name) => [
+            name === "Efficacite" ? `${Math.round(Number(v))}%` : fmtH(Number(v)),
+            name,
+          ]}
+        />
+        <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+        <ReferenceLine yAxisId="left" y={480} stroke="#22c55e" strokeDasharray="4 4" label={{ value: "8h", fontSize: 9, fill: "#22c55e", position: "right" }} />
+        <Bar yAxisId="left" dataKey="duration" name="Duree" radius={[4, 4, 0, 0]}>
+          {data.map((d, i) => (
+            <Cell key={i} fill={d.duration >= 420 ? "#6366f1" : d.duration >= 360 ? "#f59e0b" : "#ef4444"} />
+          ))}
+        </Bar>
+        <Line yAxisId="right" type="monotone" dataKey="efficiency" name="Efficacite" stroke="#10b981" strokeWidth={2} dot={false} connectNulls />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Barres horizontales : repartition moyenne des phases ─────────────────
+export function SleepPhasesBar({
+  deep,
+  rem,
+  light,
+  total,
+}: {
+  deep: number;
+  rem: number;
+  light: number;
+  total: number;
+}) {
+  if (total === 0) return null;
+  const pct = (v: number) => Math.round((v / total) * 100);
+  const fmtH = (v: number) => {
+    const h = Math.floor(v / 60);
+    const m = Math.round(v % 60);
+    return `${h}h${String(m).padStart(2, "0")}`;
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex h-6 overflow-hidden rounded-full">
+        <div className="bg-indigo-500" style={{ width: `${pct(deep)}%` }} title={`Profond ${pct(deep)}%`} />
+        <div className="bg-purple-400" style={{ width: `${pct(rem)}%` }} title={`REM ${pct(rem)}%`} />
+        <div className="bg-blue-300" style={{ width: `${pct(light)}%` }} title={`Leger ${pct(light)}%`} />
+      </div>
+      <div className="flex justify-between text-xs text-neutral-500">
+        <span>Profond {fmtH(deep)} ({pct(deep)}%)</span>
+        <span>REM {fmtH(rem)} ({pct(rem)}%)</span>
+        <span>Leger {fmtH(light)} ({pct(light)}%)</span>
+      </div>
+    </div>
   );
 }
 

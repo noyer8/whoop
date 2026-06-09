@@ -49,8 +49,28 @@ policy publique → aucune donnée exposée via la clé anon.
 ## Roadmap
 
 1. [x] Setup projet + Supabase + migrations
-2. [ ] OAuth Whoop + script de pull (whoop_recovery / sleep / workouts)
-3. [ ] Cron Job Render (pull nocturne)
-4. [ ] Formulaires de saisie (trainings, pains, tests, planning)
-5. [ ] Dashboard + visualisations + croisements
-6. [ ] Polish UI
+2. [x] OAuth Whoop + script de pull (whoop_recovery / sleep / workouts)
+3. [x] Cron Job Render (pull nocturne) — voir `render.yaml`
+4. [x] Formulaires de saisie (trainings, pains, tests, planning)
+5. [x] Dashboard + visualisations + croisements
+6. [x] Polish UI
+
+## Structure
+
+```
+src/
+  app/
+    page.tsx                          Dashboard (KPIs, tendances, croisements)
+    trainings|pains|tests|planning/   saisie manuelle (server actions)
+    settings/                         connexion Whoop + pull manuel
+    api/whoop/authorize|callback|sync OAuth + endpoint cron
+  lib/
+    supabase/server.ts                client service_role
+    whoop/                            oauth, client, sync
+    data.ts                           lectures DB (fallback gracieux)
+    analytics.ts                      agrégats hebdo + croisements
+    utils.ts                          semaines ISO, paliers Bronco
+  components/                         Nav, ui, forms, charts (recharts)
+supabase/migrations/                  0001_init.sql, 0002_whoop_tokens.sql
+render.yaml                           blueprint web + cron
+```

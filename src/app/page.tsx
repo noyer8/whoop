@@ -1,42 +1,211 @@
-const blocs = [
-  { titre: "Dashboard récup/charge", desc: "Z4-Z5 vs 150 min, strain, recovery, tendances HRV/FC", etat: "à venir" },
-  { titre: "Journal d'entraînement", desc: "Saisie séances : type, exos, RPE, notes", etat: "à venir" },
-  { titre: "Douleurs", desc: "Log par zone + intensité + timeline", etat: "à venir" },
-  { titre: "Tests / Bronco", desc: "Historique chronos + courbe de progression", etat: "à venir" },
-  { titre: "Planning", desc: "Semaine prévue vs réalisé", etat: "à venir" },
-  { titre: "Croisements", desc: "Douleur ↔ séances, recovery ↔ foot, Z4-Z5 ↔ Bronco", etat: "à venir" },
-];
+import {
+  getRecovery,
+  getWorkouts,
+  getTrainings,
+  getPains,
+  getTests,
+  isSupabaseConfigured,
+} from "@/lib/data";
+import {
+  weeklyWorkoutAgg,
+  currentWeekSummary,
+  trendSeries,
+  painVsSessions,
+  recoveryVsFoot,
+  z45VsBronco,
+} from "@/lib/analytics";
+import { isoWeek, OBJECTIF_Z45_MIN, secToChrono } from "@/lib/utils";
+import { Card, StatCard, EmptyState, PageHeader } from "@/components/ui";
+import {
+  TrendChart,
+  WeeklyGoalBars,
+  CrossScatter,
+} from "@/components/charts";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Dashboard() {
+  const [recovery, workouts, trainings, pains, tests] = await Promise.all([
+    getRecovery(120),
+    getWorkouts(120),
+    getTrainings(120),
+    getPains(180),
+    getTests(),
+  ]);
+
+  const semaine = isoWeek(new Date());
+  const weekAgg = weeklyWorkoutAgg(workouts);
+  const summary = currentWeekSummary(weekAgg, recovery, semaine);
+  const trends = trendSeries(recovery);
+
+  const weeklyBars = weekAgg.slice(-8).map((w) => ({
+    label: w.semaine.replace(/^\d+-/, ""),
+    value: Math.round(w.z45),
+  }));
+
+  const painSessions = painVsSessions(pains, trainings);
+  const recFoot = recoveryVsFoot(recovery, trainings);
+  const z45Bronco = z45VsBronco(weekAgg, tests);
+
+  const hasWhoop = recovery.length > 0 || workouts.length > 0;
+  const z45Pct = Math.min(100, Math.round((summary.z45 / OBJECTIF_Z45_MIN) * 100));
+
+  const alerteTone =
+    summary.alerte === "bad" ? "bad" : summary.alerte === "warn" ? "warn" : "good";
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-16">
-      <header className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight">Whoop Tracker</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          Suivi perso de performance — milieu de terrain en prépa physique.
-        </p>
-      </header>
+    <main className="mx-auto w-full max-w-5xl px-4 py-8">
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Semaine ${semaine} · récupération & charge`}
+      />
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {blocs.map((b) => (
-          <li
-            key={b.titre}
-            className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium">{b.titre}</h2>
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500 dark:bg-neutral-800">
-                {b.etat}
-              </span>
+      {!isSupabaseConfigured() && (
+        <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          Supabase pas encore configuré — renseigne les variables d’env puis
+          exécute les migrations. Les écrans fonctionnent, ils s’afficheront vides.
+        </div>
+      )}
+
+      {/* KPIs semaine */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard
+          label="Z4-Z5 cette semaine"
+          value={`${summary.z45} min`}
+          hint={`Objectif ${OBJECTIF_Z45_MIN} min · ${z45Pct}%`}
+          tone={summary.z45 >= OBJECTIF_Z45_MIN ? "good" : "default"}
+        />
+        <StatCard label="Strain cumulé" value={summary.strain || "—"} />
+        <StatCard
+          label="Recovery moy."
+          value={summary.recoveryMoy != null ? `${summary.recoveryMoy}%` : "—"}
+          tone={
+            summary.recoveryMoy == null
+              ? "default"
+              : summary.recoveryMoy >= 60
+                ? "good"
+                : summary.recoveryMoy >= 45
+                  ? "warn"
+                  : "bad"
+          }
+        />
+        <StatCard
+          label="Alerte charge"
+          value={summary.alerte === "ok" ? "OK" : summary.alerte === "warn" ? "Vigilance" : "Surcharge"}
+          tone={alerteTone}
+          hint={summary.alerteMsg}
+        />
+      </div>
+
+      {!hasWhoop ? (
+        <div className="mt-6">
+          <EmptyState>
+            Aucune donnée Whoop encore. Connecte Whoop dans{" "}
+            <strong>Réglages</strong> et lance un pull.
+          </EmptyState>
+        </div>
+      ) : (
+        <>
+          {/* Z4-Z5 hebdo vs objectif */}
+          <Card className="mt-6">
+            <div className="mb-2 text-sm font-medium">
+              Minutes Z4-Z5 par semaine vs objectif
             </div>
-            <p className="mt-1 text-sm text-neutral-500">{b.desc}</p>
-          </li>
-        ))}
-      </ul>
+            <WeeklyGoalBars data={weeklyBars} goal={OBJECTIF_Z45_MIN} />
+          </Card>
 
-      <p className="mt-10 text-xs text-neutral-400">
-        Étape 1/6 — setup projet, connexion Supabase et migrations en place.
-      </p>
+          {/* Tendances */}
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <Card>
+              <div className="mb-2 text-sm font-medium">HRV (ms)</div>
+              <TrendChart data={trends} dataKey="hrv" color="#10b981" unit=" ms" />
+            </Card>
+            <Card>
+              <div className="mb-2 text-sm font-medium">FC repos (bpm)</div>
+              <TrendChart data={trends} dataKey="fcRepos" color="#0ea5e9" unit=" bpm" />
+            </Card>
+            <Card>
+              <div className="mb-2 text-sm font-medium">Recovery (%)</div>
+              <TrendChart data={trends} dataKey="recovery" color="#a855f7" unit="%" domain={[0, 100]} />
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* Croisements intelligents */}
+      <h2 className="mt-10 mb-3 text-lg font-semibold">Croisements</h2>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* 1. Douleur ↔ séances précédentes */}
+        <Card>
+          <div className="mb-1 text-sm font-medium">Douleurs ↔ séances (J-2)</div>
+          <p className="mb-3 text-xs text-neutral-400">
+            Types de séances dans les 2 jours avant une douleur.
+          </p>
+          {painSessions.length === 0 ? (
+            <p className="text-sm text-neutral-400">Pas assez de données.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {painSessions.map((s) => {
+                const max = painSessions[0].count;
+                return (
+                  <li key={s.type} className="flex items-center gap-2 text-sm">
+                    <span className="w-16 shrink-0">{s.type}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
+                      <div className="h-full rounded-full bg-red-400" style={{ width: `${(s.count / max) * 100}%` }} />
+                    </div>
+                    <span className="w-6 text-right tabular-nums text-neutral-500">{s.count}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        {/* 2. Recovery ↔ qualité foot */}
+        <Card>
+          <div className="mb-1 text-sm font-medium">Recovery ↔ RPE foot</div>
+          <p className="mb-3 text-xs text-neutral-400">
+            Recovery du jour (x) vs RPE séance foot (y).
+          </p>
+          {recFoot.length === 0 ? (
+            <p className="text-sm text-neutral-400">Pas assez de données.</p>
+          ) : (
+            <CrossScatter data={recFoot} xLabel="Recovery %" yLabel="RPE" color="#10b981" />
+          )}
+        </Card>
+
+        {/* 3. Z4-Z5 ↔ Bronco */}
+        <Card>
+          <div className="mb-1 text-sm font-medium">Volume Z4-Z5 ↔ Bronco</div>
+          <p className="mb-3 text-xs text-neutral-400">
+            Z4-Z5 hebdo (x) vs chrono Bronco (y, plus bas = mieux).
+          </p>
+          {z45Bronco.length === 0 ? (
+            <p className="text-sm text-neutral-400">
+              Pas assez de données (ajoute des tests Bronco).
+            </p>
+          ) : (
+            <CrossScatter
+              data={z45Bronco}
+              xLabel="Z4-Z5 min/sem"
+              yLabel="Bronco (s)"
+              color="#0ea5e9"
+            />
+          )}
+        </Card>
+      </div>
+
+      {tests.filter((t) => t.type === "Bronco" && t.resultat != null).length > 0 && (
+        <p className="mt-4 text-xs text-neutral-400">
+          Dernier Bronco :{" "}
+          {secToChrono(
+            Number(
+              tests.filter((t) => t.type === "Bronco" && t.resultat != null).at(-1)!.resultat
+            )
+          )}{" "}
+          · cible fin août &lt; 4&apos;15.
+        </p>
+      )}
     </main>
   );
 }

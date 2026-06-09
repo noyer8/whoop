@@ -1,0 +1,41 @@
+# Blueprint Render — Whoop Tracker
+# 1 Web Service (front Next.js) + 1 Cron Job (pull Whoop nocturne).
+services:
+  # ── Front Next.js ──────────────────────────────────────────────────────
+  - type: web
+    name: whoop-tracker
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WHOOP_CLIENT_ID
+        sync: false
+      - key: WHOOP_CLIENT_SECRET
+        sync: false
+      - key: WHOOP_REDIRECT_URI
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # ── Cron : pull Whoop chaque nuit (03:30 UTC) ──────────────────────────
+  - type: cron
+    name: whoop-pull
+    runtime: node
+    plan: free
+    schedule: "30 3 * * *"
+    buildCommand: "true"
+    # Déclenche l'endpoint de sync du web service avec le secret.
+    startCommand: 'curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/whoop/sync"'
+    envVars:
+      - key: APP_URL
+        sync: false # ex. https://whoop-tracker.onrender.com
+      - key: CRON_SECRET
+        sync: false

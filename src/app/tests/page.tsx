@@ -2,7 +2,7 @@ import { getTests } from "@/lib/data";
 import { addTest, deleteTest } from "./actions";
 import { Card, EmptyState, PageHeader, StatCard, inputClass, labelClass } from "@/components/ui";
 import { SubmitButton, DeleteButton } from "@/components/forms";
-import { BroncoChart } from "@/components/charts";
+import { BroncoChart, TrendChart } from "@/components/charts";
 import { BRONCO_PALIERS, broncoPalier, secToChrono } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,14 @@ export default async function TestsPage() {
     .filter((t) => t.type === "Bronco" && t.resultat != null)
     .map((t) => ({ label: t.date.slice(5), sec: Number(t.resultat), date: t.date }));
 
+  const vo2maxTests = tests
+    .filter((t) => t.type === "VO2max" && t.resultat != null)
+    .map((t) => ({ label: t.date.slice(5), value: Number(t.resultat), date: t.date }));
+
   const best = bronco.length ? Math.min(...bronco.map((b) => b.sec)) : null;
   const last = bronco.length ? bronco[bronco.length - 1].sec : null;
+  const lastVo2 = vo2maxTests.length ? vo2maxTests[vo2maxTests.length - 1].value : null;
+  const bestVo2 = vo2maxTests.length ? Math.max(...vo2maxTests.map((v) => v.value)) : null;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -41,6 +47,19 @@ export default async function TestsPage() {
         </>
       )}
 
+      {vo2maxTests.length > 0 && (
+        <>
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatCard label="Dernier VO2max" value={lastVo2 != null ? `${lastVo2}` : "---"} hint="ml/kg/min" />
+            <StatCard label="Record VO2max" value={bestVo2 != null ? `${bestVo2}` : "---"} tone="good" hint="ml/kg/min" />
+          </div>
+          <Card className="mb-6">
+            <div className="mb-2 text-sm font-medium">Progression VO2max (ml/kg/min)</div>
+            <TrendChart data={vo2maxTests} dataKey="value" color="#f43f5e" unit=" ml/kg/min" />
+          </Card>
+        </>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
         <Card>
           <form action={addTest} className="space-y-3">
@@ -52,6 +71,7 @@ export default async function TestsPage() {
               <label className={labelClass}>Type</label>
               <select name="type" required className={inputClass} defaultValue="Bronco">
                 <option value="Bronco">Bronco</option>
+                <option value="VO2max">VO2max</option>
                 <option value="sprint">Sprint</option>
                 <option value="autre">Autre</option>
               </select>

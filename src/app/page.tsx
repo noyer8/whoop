@@ -51,6 +51,10 @@ export default async function Dashboard() {
   const recFoot = recoveryVsFoot(recovery, trainings);
   const z45Bronco = z45VsBronco(weekAgg, tests);
 
+  const vo2maxData = tests
+    .filter((t) => t.type === "VO2max" && t.resultat != null)
+    .map((t) => ({ label: t.date.slice(5), value: Number(t.resultat) }));
+
   const hasWhoop = recovery.length > 0 || workouts.length > 0;
   const z45Pct = Math.min(100, Math.round((summary.z45 / OBJECTIF_Z45_MIN) * 100));
 
@@ -138,6 +142,13 @@ export default async function Dashboard() {
               <TrendChart data={trends} dataKey="recovery" color="#a855f7" unit="%" domain={[0, 100]} />
             </Card>
           </div>
+
+          {vo2maxData.length > 0 && (
+            <Card className="mt-6">
+              <div className="mb-2 text-sm font-medium">VO2max (ml/kg/min)</div>
+              <TrendChart data={vo2maxData} dataKey="value" color="#f43f5e" unit=" ml/kg/min" />
+            </Card>
+          )}
         </>
       )}
 
